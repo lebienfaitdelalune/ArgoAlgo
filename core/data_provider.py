@@ -288,28 +288,32 @@ class DataProvider:
     def _load_symbol(self, symbol_name: str, timeframes: list) -> None:
         """Load one symbol: Symbol object, bars for all timeframes, and indicators."""
         try:
-            # Python.NET in cTrader Cloud cannot invoke C# indexers via [] syntax
-            # (raises SystemError). Try alternatives in order:
-            #   1. Symbols.GetSymbol(name) — documented cTrader API method
-            #   2. Symbols.get_Item(name) — the underlying C# indexer method
-            #   3. api.Symbol — the chart symbol property (works for chart symbol)
+            # Symbol lookup attempts, in order. Each failure is logged with
+            # the underlying exception so Cloud-only API quirks are visible
+            # in the journal instead of a bare DataProviderError downstream.
+            def _chart_symbol():
+                chart_sym = self._api.Symbol
+                if chart_sym is not None and str(chart_sym.Name) == symbol_name:
+                    return chart_sym
+                return None
+
+            attempts = [
+                ("Symbols.GetSymbol", lambda: self._api.Symbols.GetSymbol(symbol_name)),
+                ("Symbols[]", lambda: self._api.Symbols[symbol_name]),
+                ("Symbols.get_Item", lambda: self._api.Symbols.get_Item(symbol_name)),
+                ("api.Symbol", _chart_symbol),
+            ]
             sym = None
-            try:
-                sym = self._api.Symbols.GetSymbol(symbol_name)
-            except BaseException:
-                pass
-            if sym is None:
+            for attempt_name, fn in attempts:
                 try:
-                    sym = self._api.Symbols.get_Item(symbol_name)
-                except BaseException:
-                    pass
-            if sym is None:
-                try:
-                    chart_sym = self._api.Symbol
-                    if chart_sym is not None and str(chart_sym.Name) == symbol_name:
-                        sym = chart_sym
-                except BaseException:
-                    pass
+                    sym = fn()
+                except BaseException as exc:
+                    self._logger.warning(
+                        f"{attempt_name}({symbol_name!r}) failed: "
+                        f"{type(exc).__name__}: {str(exc)[:120]}")
+                    sym = None
+                if sym is not None:
+                    break
             if sym is None:
                 raise RuntimeError(f"Could not obtain Symbol object for {symbol_name!r}")
             self._symbol_objects[symbol_name] = sym
@@ -330,20 +334,27 @@ class DataProvider:
                 #   2. MarketData.GetBars(name, tf) — legacy reversed fallback
                 #   3. api.Bars — chart bars (only valid for chart symbol + chart TF)
                 bars = None
-                try:
-                    bars = self._api.MarketData.GetBars(tf, symbol_name)
-                except BaseException:
-                    pass
-                if bars is None:
+                bar_attempts = [
+                    ("GetBars(tf,name)", lambda t=tf: self._api.MarketData.GetBars(t, symbol_name)),
+                    ("GetBars(name,tf)", lambda t=tf: self._api.MarketData.GetBars(symbol_name, t)),
+                ]
+                if tf == self._primary_timeframe:
+                    def _chart_bars():
+                        chart_bars = self._api.Bars
+                        if str(self._api.Symbol.Name) == symbol_name:
+                            return chart_bars
+                        return None
+                    bar_attempts.append(("api.Bars", _chart_bars))
+                for attempt_name, fn in bar_attempts:
                     try:
-                        bars = self._api.MarketData.GetBars(symbol_name, tf)
-                    except BaseException:
-                        pass
-                if bars is None and tf == self._primary_timeframe:
-                    try:
-                        bars = self._api.Bars
-                    except BaseException:
-                        pass
+                        bars = fn()
+                    except BaseException as exc:
+                        self._logger.warning(
+                            f"{attempt_name} {symbol_name!r} tf={tf!r} failed: "
+                            f"{type(exc).__name__}: {str(exc)[:120]}")
+                        bars = None
+                    if bars is not None:
+                        break
                 if bars is None:
                     raise RuntimeError("No bars source available")
                 self._bars[symbol_name][tf] = bars

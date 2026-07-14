@@ -193,6 +193,7 @@ class TestInitialize:
 
         mock_api.Symbols.GetSymbol.side_effect = symbol_side_effect
         mock_api.Symbols.get_Item.side_effect = symbol_side_effect
+        mock_api.Symbols.__getitem__.side_effect = symbol_side_effect
         dp = DataProvider(mock_api, ["BADSYM", "EURUSD"], mock_logger)
         dp.initialize(ALL_TF)
         # EURUSD should still be available
