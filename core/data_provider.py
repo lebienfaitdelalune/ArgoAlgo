@@ -290,13 +290,19 @@ class DataProvider:
         try:
             # Python.NET in cTrader Cloud cannot invoke C# indexers via [] syntax
             # (raises SystemError). Try alternatives in order:
-            #   1. Symbols.get_Item(name) — the underlying C# indexer method
-            #   2. api.Symbol — the chart symbol property (works for chart symbol)
+            #   1. Symbols.GetSymbol(name) — documented cTrader API method
+            #   2. Symbols.get_Item(name) — the underlying C# indexer method
+            #   3. api.Symbol — the chart symbol property (works for chart symbol)
             sym = None
             try:
-                sym = self._api.Symbols.get_Item(symbol_name)
+                sym = self._api.Symbols.GetSymbol(symbol_name)
             except BaseException:
                 pass
+            if sym is None:
+                try:
+                    sym = self._api.Symbols.get_Item(symbol_name)
+                except BaseException:
+                    pass
             if sym is None:
                 try:
                     chart_sym = self._api.Symbol
@@ -318,13 +324,21 @@ class DataProvider:
         for tf in timeframes:
             try:
                 # Try API calls in order:
-                #   1. MarketData.GetBars(name, tf) — correct cTrader multi-symbol API
-                #   2. api.Bars — chart bars (only valid for chart symbol + chart TF)
+                #   1. MarketData.GetBars(tf, name) — documented signature is
+                #      (TimeFrame, symbolName); the reversed order below never
+                #      worked and caused the historic H4/multi-symbol failures
+                #   2. MarketData.GetBars(name, tf) — legacy reversed fallback
+                #   3. api.Bars — chart bars (only valid for chart symbol + chart TF)
                 bars = None
                 try:
-                    bars = self._api.MarketData.GetBars(symbol_name, tf)
+                    bars = self._api.MarketData.GetBars(tf, symbol_name)
                 except BaseException:
                     pass
+                if bars is None:
+                    try:
+                        bars = self._api.MarketData.GetBars(symbol_name, tf)
+                    except BaseException:
+                        pass
                 if bars is None and tf == self._primary_timeframe:
                     try:
                         bars = self._api.Bars

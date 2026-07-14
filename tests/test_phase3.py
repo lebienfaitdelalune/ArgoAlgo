@@ -58,7 +58,7 @@ def mock_api():
         sym.PipSize = 0.0001
         return sym
 
-    api.Symbols.get_Item.side_effect = make_symbol
+    api.Symbols.GetSymbol.side_effect = make_symbol
     api.MarketData.GetBars.return_value = _make_mock_bars()
 
     # Indicator factory — each call returns a fresh mock
@@ -151,7 +151,7 @@ class TestInitialize:
         assert dp.primary_timeframe == PRIMARY_TF
 
     def test_symbol_api_called_for_each_symbol(self, mock_api, dp):
-        calls = [c[0][0] for c in mock_api.Symbols.get_Item.call_args_list]
+        calls = [c[0][0] for c in mock_api.Symbols.GetSymbol.call_args_list]
         assert "EURUSD" in calls
         assert "GBPUSD" in calls
 
@@ -160,7 +160,7 @@ class TestInitialize:
         assert mock_api.MarketData.GetBars.call_count == 4
 
     def test_get_bars_called_with_correct_timeframes(self, mock_api, dp):
-        tf_args = {c[0][1] for c in mock_api.MarketData.GetBars.call_args_list}
+        tf_args = {c[0][0] for c in mock_api.MarketData.GetBars.call_args_list}
         assert PRIMARY_TF in tf_args
         assert HIGHER_TF in tf_args
 
@@ -191,6 +191,7 @@ class TestInitialize:
             s.PipSize = 0.0001
             return s
 
+        mock_api.Symbols.GetSymbol.side_effect = symbol_side_effect
         mock_api.Symbols.get_Item.side_effect = symbol_side_effect
         dp = DataProvider(mock_api, ["BADSYM", "EURUSD"], mock_logger)
         dp.initialize(ALL_TF)
@@ -251,8 +252,8 @@ class TestGetSpreadPips:
         sym.Bid = 1.08000
         sym.Ask = 1.08020
         sym.PipSize = 0.0001
-        mock_api.Symbols.get_Item.return_value = sym
-        mock_api.Symbols.get_Item.side_effect = None
+        mock_api.Symbols.GetSymbol.return_value = sym
+        mock_api.Symbols.GetSymbol.side_effect = None
         dp = DataProvider(mock_api, ["EURUSD"], mock_logger)
         dp.initialize(ALL_TF)
         spread = dp.get_spread_pips("EURUSD")
@@ -273,8 +274,8 @@ class TestIsSpreadAcceptable:
         sym.Bid = 1.08000
         sym.Ask = 1.08010   # 1.0 pip spread
         sym.PipSize = 0.0001
-        mock_api.Symbols.get_Item.return_value = sym
-        mock_api.Symbols.get_Item.side_effect = None
+        mock_api.Symbols.GetSymbol.return_value = sym
+        mock_api.Symbols.GetSymbol.side_effect = None
         dp = DataProvider(mock_api, ["EURUSD"], mock_logger)
         dp.initialize(ALL_TF)
         assert dp.is_spread_acceptable("EURUSD", max_spread_pips=3.0) is True
@@ -284,8 +285,8 @@ class TestIsSpreadAcceptable:
         sym.Bid = 1.08000
         sym.Ask = 1.08050   # 5.0 pip spread
         sym.PipSize = 0.0001
-        mock_api.Symbols.get_Item.return_value = sym
-        mock_api.Symbols.get_Item.side_effect = None
+        mock_api.Symbols.GetSymbol.return_value = sym
+        mock_api.Symbols.GetSymbol.side_effect = None
         dp = DataProvider(mock_api, ["EURUSD"], mock_logger)
         dp.initialize(ALL_TF)
         assert dp.is_spread_acceptable("EURUSD", max_spread_pips=3.0) is False
@@ -295,8 +296,8 @@ class TestIsSpreadAcceptable:
         sym.Bid = 1.08000
         sym.Ask = 1.08030   # exactly 3.0 pip spread
         sym.PipSize = 0.0001
-        mock_api.Symbols.get_Item.return_value = sym
-        mock_api.Symbols.get_Item.side_effect = None
+        mock_api.Symbols.GetSymbol.return_value = sym
+        mock_api.Symbols.GetSymbol.side_effect = None
         dp = DataProvider(mock_api, ["EURUSD"], mock_logger)
         dp.initialize(ALL_TF)
         assert dp.is_spread_acceptable("EURUSD", max_spread_pips=3.0) is True
@@ -448,7 +449,7 @@ class TestMultiTimeframe:
     def test_different_timeframes_return_different_bar_objects(self, mock_api, mock_logger):
         bars_m15 = _make_mock_bars(200)
         bars_h4 = _make_mock_bars(500)
-        mock_api.MarketData.GetBars.side_effect = lambda sym, tf: bars_m15 if tf == PRIMARY_TF else bars_h4
+        mock_api.MarketData.GetBars.side_effect = lambda tf, sym: bars_m15 if tf == PRIMARY_TF else bars_h4
         dp = DataProvider(mock_api, ["EURUSD"], mock_logger)
         dp.initialize(ALL_TF)
         assert dp.get_bars("EURUSD", PRIMARY_TF) is bars_m15
@@ -497,7 +498,7 @@ class TestTradingBotDataProviderIntegration:
         sym.Bid = 1.08000
         sym.Ask = 1.08020
         sym.PipSize = 0.0001
-        api.Symbols.get_Item.return_value = sym
+        api.Symbols.GetSymbol.return_value = sym
         api.MarketData.GetBars.return_value = _make_mock_bars()
         return api
 
