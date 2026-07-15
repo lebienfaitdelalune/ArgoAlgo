@@ -144,6 +144,7 @@ class DataProvider:
             f"DataProvider initializing {len(self._symbols)} symbols "
             f"across {len(timeframes)} timeframe(s)..."
         )
+        self._log_available_symbols()
 
         for symbol_name in self._symbols:
             try:
@@ -285,6 +286,31 @@ class DataProvider:
     # Private helpers
     # ------------------------------------------------------------------
 
+    def _log_available_symbols(self) -> None:
+        """One-time diagnostic: what does api.Symbols actually contain?
+
+        cTrader's Symbols collection enumerates symbol NAMES (strings);
+        GetSymbol(name) returns null for unknown names, so knowing the
+        exact names on this account is the fastest way to debug lookups.
+        """
+        try:
+            count = int(self._api.Symbols.Count)
+            wanted = [n for n in self._symbols]
+            matches: list[str] = []
+            for i in range(count):
+                try:
+                    name = str(self._api.Symbols[i])
+                except BaseException:
+                    break
+                if any(w[:3] in name or w[3:] in name for w in wanted):
+                    matches.append(name)
+            self._logger.info(
+                f"api.Symbols: count={count}, "
+                f"names matching basket currencies: {matches[:30]}")
+        except BaseException as exc:
+            self._logger.warning(
+                f"Symbol enumeration failed: {type(exc).__name__}: {str(exc)[:120]}")
+
     def _load_symbol(self, symbol_name: str, timeframes: list) -> None:
         """Load one symbol: Symbol object, bars for all timeframes, and indicators."""
         try:
@@ -307,6 +333,9 @@ class DataProvider:
             for attempt_name, fn in attempts:
                 try:
                     sym = fn()
+                    if sym is None:
+                        self._logger.warning(
+                            f"{attempt_name}({symbol_name!r}) returned null")
                 except BaseException as exc:
                     self._logger.warning(
                         f"{attempt_name}({symbol_name!r}) failed: "
