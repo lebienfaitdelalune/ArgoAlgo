@@ -256,7 +256,7 @@ class OrderExecutor:
                     f"ClosePosition failed for #{pos_id}: {result.Error}"
                 )
                 return False
-        except Exception as exc:
+        except BaseException as exc:
             self._logger.error(
                 f"close_position() exception for #{pos_id}", exc=exc
             )
@@ -277,7 +277,7 @@ class OrderExecutor:
         """
         try:
             positions = list(self._api.Positions)
-        except Exception as exc:
+        except BaseException as exc:
             self._logger.error("close_all_positions() failed to list positions", exc=exc)
             return 0
 
@@ -315,7 +315,7 @@ class OrderExecutor:
             position.ModifyStopLossPrice(new_sl_price)
             self._sl_mods_this_minute += 1
             return True
-        except Exception as exc:
+        except BaseException as exc:
             self._logger.error(
                 f"modify_sl() exception for #{pos_id}", exc=exc
             )
@@ -363,6 +363,16 @@ class OrderExecutor:
     # ------------------------------------------------------------------
     # Dunder
     # ------------------------------------------------------------------
+
+    def reset_rate_counters(self) -> None:
+        """Reset per-minute rate counters.
+
+        Called from on_bar_closed (H1 bars, so at most hourly) — stricter
+        than cTrader's per-minute limits, never looser.
+        """
+        self._orders_this_minute = 0
+        self._cancels_this_minute = 0
+        self._sl_mods_this_minute = 0
 
     def __repr__(self) -> str:
         return f"OrderExecutor(prefix={self._label_prefix!r})"

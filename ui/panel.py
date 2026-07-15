@@ -172,7 +172,7 @@ class UIPanel:
                 self._api.Chart.VerticalAlignment.Top,
                 color,
             )
-        except Exception:
+        except BaseException:
             pass  # Chart API unavailable — degrade silently
 
     def _register_panic_button(self) -> None:
@@ -189,7 +189,7 @@ class UIPanel:
                 self._api.Chart.VerticalAlignment.Top,
             )
             btn.Click += self._on_panic_clicked
-        except Exception:
+        except BaseException:
             pass  # Button API unavailable — degrade silently
 
     # ------------------------------------------------------------------

@@ -215,6 +215,14 @@ class TradingBot:
         except BaseException as exc:
             self._logger.error(f"BC-1 day rollover failed: {type(exc).__name__}")
 
+        # Rate counters were never reset before 2026-07-15 — they'd grow
+        # until the 500/min cap silently blocked all orders (~8 months in).
+        if self._order_executor:
+            try:
+                self._order_executor.reset_rate_counters()
+            except BaseException:
+                pass
+
         self._logger.debug("BC-2: drawdown check")
         try:
             dd_status = self._risk_manager.check_drawdown_limits()
@@ -338,7 +346,7 @@ class TradingBot:
             try:
                 snapshot = self._build_performance_snapshot()
                 self._logger.daily_summary(snapshot)
-            except Exception as exc:
+            except BaseException as exc:
                 self._logger.error("Failed to generate daily summary on stop", exc=exc)
 
         # Friday end-of-week position close (xsect holds over weekends by design)
@@ -349,7 +357,7 @@ class TradingBot:
                     closed = self._order_executor.close_all_positions("Friday end-of-week close")
                     if self._logger:
                         self._logger.risk_action(f"Friday close: closed {closed} position(s)")
-            except Exception as exc:
+            except BaseException as exc:
                 if self._logger:
                     self._logger.error("Friday close error during on_stop", exc=exc)
 
@@ -359,7 +367,7 @@ class TradingBot:
                 balance = self._api.Account.Balance
                 equity = self._api.Account.Equity
                 self._logger.info(f"Final balance={balance:.2f} equity={equity:.2f}")
-            except Exception:
+            except BaseException:
                 pass
 
         if self._logger:
@@ -410,7 +418,7 @@ class TradingBot:
         if self._api:
             try:
                 self._api.Notifications.SendPushNotification(f"ArgoAlgo HALTED: {reason}")
-            except Exception:
+            except BaseException:
                 pass
 
     # ------------------------------------------------------------------

@@ -168,7 +168,7 @@ class Logger:
             filename = f"ArgoAlgo_{date_str}.log"
             with open(filename, "a", encoding="utf-8") as f:
                 f.write(line + "\n")
-        except Exception:
+        except BaseException:
             # Cloud does not support file I/O — fail silently
             pass
 
