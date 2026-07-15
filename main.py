@@ -615,8 +615,11 @@ class TradingBot:
         )
 
         # Primary TF must match the chart TF the cBot is deployed on (H1).
+        # Use the chart's TimeFrame OBJECT: api.TimeFrame doesn't exist
+        # (TimeFrame is a standalone enum, same gotcha as TradeType) and the
+        # "H1" string fallback matches no MarketData.GetBars overload.
         try:
-            primary_tf = self._api.TimeFrame.Hour1
+            primary_tf = self._api.Bars.TimeFrame
         except BaseException:
             primary_tf = "H1"
 
