@@ -112,11 +112,16 @@ class DataProvider:
         symbols: list[str],
         logger: "Logger",
         indicator_params: dict | None = None,
+        init_indicators: bool = True,
     ) -> None:
         self._api = api
         self._symbols = symbols
         self._logger = logger
         self._indicator_params: dict = indicator_params or {}
+        # Indicators serve only the legacy bar-signal strategies; in xsect
+        # mode they'd just spray async "Indicator Type not found" errors
+        # from cTrader Cloud at startup.
+        self._init_indicators_enabled = init_indicators
 
         self._symbol_objects: dict = {}           # {symbol_name: Symbol}
         self._bars: dict = {}                     # {symbol_name: {timeframe: Bars}}
@@ -395,7 +400,9 @@ class DataProvider:
                 )
 
         self._indicators[symbol_name] = {}
-        if primary_bars is not None:
+        if not self._init_indicators_enabled:
+            pass
+        elif primary_bars is not None:
             self._init_indicators(symbol_name, primary_bars)
         else:
             self._logger.warning(

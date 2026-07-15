@@ -532,6 +532,7 @@ class TestTradingBotDataProviderIntegration:
         from main import TradingBot
         api = self._make_bot_api()
         bot = TradingBot(api=api)
+        bot.EnableXsect = False  # indicators are skipped in xsect mode
         bot.on_start()
         dp = bot._data_provider
         for sym in bot._symbols:

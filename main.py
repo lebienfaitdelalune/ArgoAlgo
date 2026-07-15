@@ -620,6 +620,7 @@ class TradingBot:
             symbols=self._symbols,
             logger=self._logger,
             indicator_params=indicator_params,
+            init_indicators=not self.EnableXsect,
         )
 
         # Primary TF must match the chart TF the cBot is deployed on (H1).
