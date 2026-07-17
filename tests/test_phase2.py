@@ -258,6 +258,17 @@ class TestHaltTrading:
         started_bot._halt_trading("test")
         started_bot._ui_panel.set_status.assert_called_with(BotStatus.HALTED)
 
+    def test_halt_closes_all_positions(self, started_bot):
+        started_bot._order_executor = MagicMock()
+        started_bot._halt_trading("drawdown limit")
+        started_bot._order_executor.close_all_positions.assert_called_once()
+
+    def test_halt_close_all_failure_does_not_raise(self, started_bot):
+        started_bot._order_executor = MagicMock()
+        started_bot._order_executor.close_all_positions.side_effect = RuntimeError("api down")
+        started_bot._halt_trading("test")  # Should not raise
+        assert started_bot._is_halted is True
+
     def test_halt_push_notification_failure_does_not_raise(self, started_bot, mock_api):
         mock_api.Notifications.SendPushNotification.side_effect = RuntimeError("offline")
         started_bot._halt_trading("test")  # Should not raise

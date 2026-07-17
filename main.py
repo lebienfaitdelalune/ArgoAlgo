@@ -399,8 +399,11 @@ class TradingBot:
     def _halt_trading(self, reason: str, permanent: bool = False) -> None:
         """Halt all new trading activity.
 
-        Sets the internal halted flag, updates the UI, and sends a
-        critical push notification. Does not close existing positions.
+        Sets the internal halted flag, closes all bot positions, updates
+        the UI, and sends a critical push notification. Closing on halt is
+        the backstop for no-SL positions (xsect mode): without it a
+        drawdown breach stops new trades but lets the open exposure keep
+        bleeding.
 
         Args:
             reason: Human-readable reason for the halt.
@@ -413,6 +416,13 @@ class TradingBot:
             self._permanent_halt = True
         if self._logger:
             self._logger.risk_action(f"Trading HALTED: {reason}")
+        if self._order_executor:
+            try:
+                self._order_executor.close_all_positions(f"Halt: {reason}")
+            except BaseException as exc:
+                if self._logger:
+                    self._logger.error(
+                        f"Halt close-all failed: {type(exc).__name__}")
         if self._ui_panel:
             self._ui_panel.set_status(BotStatus.HALTED)
         if self._api:

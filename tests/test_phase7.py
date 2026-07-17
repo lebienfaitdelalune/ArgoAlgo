@@ -220,12 +220,6 @@ class TestSetActiveStrategy:
 # ---------------------------------------------------------------------------
 
 class TestPanicButton:
-    def test_panic_calls_close_all_positions(self):
-        panel, _, _, executor, _ = _make_panel()
-        executor.close_all_positions.return_value = 2
-        panel._on_panic_clicked()
-        executor.close_all_positions.assert_called_once_with("PANIC")
-
     def test_panic_calls_halt_callback(self):
         panel, _, _, executor, halt_cb = _make_panel()
         executor.close_all_positions.return_value = 0
@@ -243,13 +237,6 @@ class TestPanicButton:
         executor.close_all_positions.return_value = 1
         panel._on_panic_clicked()
         logger.warning.assert_called()
-
-    def test_panic_warning_mentions_positions_closed(self):
-        panel, _, logger, executor, _ = _make_panel()
-        executor.close_all_positions.return_value = 3
-        panel._on_panic_clicked()
-        calls_text = " ".join(str(c) for c in logger.warning.call_args_list)
-        assert "3" in calls_text
 
 
 # ---------------------------------------------------------------------------

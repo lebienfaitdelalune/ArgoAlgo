@@ -116,10 +116,8 @@ class UIPanel:
     # ------------------------------------------------------------------
 
     def _on_panic_clicked(self) -> None:
-        """Handle Panic Button click: close all positions and halt trading."""
+        """Handle Panic Button click: halt trading (halt closes all positions)."""
         self._logger.warning("PANIC BUTTON activated!")
-        closed = self._order_executor.close_all_positions("PANIC")
-        self._logger.warning(f"Panic: closed {closed} positions.")
         self._on_halt_callback("Panic button pressed")
         self.set_status(BotStatus.HALTED)
 

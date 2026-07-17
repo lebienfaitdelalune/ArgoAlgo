@@ -371,7 +371,8 @@ class TestPanicButton:
         bot = _started_bot()
         bot._order_executor.close_all_positions = MagicMock(return_value=2)
         bot._ui_panel._on_panic_clicked()
-        bot._order_executor.close_all_positions.assert_called_once_with("PANIC")
+        bot._order_executor.close_all_positions.assert_called_once_with(
+            "Halt: Panic button pressed")
 
     def test_panic_sets_panel_status_to_halted(self):
         bot = _started_bot()
